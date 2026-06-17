@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BaZi — перевірка 4 стовпів</title>
+  <style>
+    :root { --bg:#1a1410; --card:#241c16; --gold:#c9a96a; --ink:#f2e8d8; --muted:#9a8a76; --line:#3a2e24; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); padding:24px; }
+    .wrap { max-width:760px; margin:0 auto; }
+    h1 { font-weight:600; letter-spacing:.5px; color:var(--gold); margin:0 0 4px; }
+    .sub { color:var(--muted); font-size:14px; margin-bottom:24px; }
+    form { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; display:grid; gap:14px; }
+    label { font-size:13px; color:var(--muted); display:block; margin-bottom:6px; }
+    input { width:100%; padding:11px 13px; border-radius:9px; border:1px solid var(--line); background:#1c1510; color:var(--ink); font-size:15px; }
+    input:focus { outline:none; border-color:var(--gold); }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    button { background:var(--gold); color:#1a1410; border:none; padding:13px; border-radius:9px; font-size:15px; font-weight:600; cursor:pointer; }
+    button:hover { opacity:.9; }
+    .err { background:#3a1f1a; border:1px solid #7a3a2a; color:#f0c4b4; padding:12px 14px; border-radius:9px; margin-top:16px; font-size:14px; }
+    .warn { background:#332a16; border:1px solid #6a5a2a; color:#e8d8a4; padding:12px 14px; border-radius:9px; margin-top:16px; font-size:14px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-top:20px; }
+    .card h2 { margin:0 0 4px; font-size:17px; color:var(--gold); }
+    .card .note { color:var(--muted); font-size:13px; margin-bottom:16px; }
+    .pillars { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .pillar { text-align:center; background:#1c1510; border:1px solid var(--line); border-radius:10px; padding:14px 8px; }
+    .pillar .lbl { font-size:12px; color:var(--muted); margin-bottom:8px; }
+    .pillar .val { font-size:26px; color:var(--ink); }
+    .dm { margin-top:16px; text-align:center; font-size:15px; }
+    .dm b { color:var(--gold); font-size:22px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; margin-top:6px; }
+    td { padding:7px 0; border-bottom:1px solid var(--line); color:var(--ink); }
+    td:first-child { color:var(--muted); width:55%; }
+    .footnote { color:var(--muted); font-size:12px; margin-top:24px; line-height:1.6; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BaZi — перевірка 4 стовпів</h1>
+  <div class="sub">Введіть дані народження. Порівняйте результат із bazi-calculator.com.</div>
+
+  <form method="post">
+    <div class="row">
+      <div>
+        <label>Дата народження</label>
+        <input type="date" name="date" value="{{ form.date or '' }}" required>
+      </div>
+      <div>
+        <label>Час народження</label>
+        <input type="time" name="time" value="{{ form.time or '' }}" required>
+      </div>
+    </div>
+    <div>
+      <label>Місто / країна</label>
+      <input type="text" name="city" value="{{ form.city or '' }}" placeholder="Київ, Україна" required>
+    </div>
+    <button type="submit">Розрахувати БаЦзи</button>
+  </form>
+
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  {% if geo_error %}<div class="warn">{{ geo_error }}</div>{% endif %}
+  {% if tz_error %}<div class="warn">{{ tz_error }}</div>{% endif %}
+
+  {% macro pillars_card(title, note, data) %}
+  <div class="card">
+    <h2>{{ title }}</h2>
+    <div class="note">{{ note }} · час розрахунку: {{ data.datetime }}</div>
+    <div class="pillars">
+      <div class="pillar"><div class="lbl">Рік 年</div><div class="val">{{ data.year }}</div></div>
+      <div class="pillar"><div class="lbl">Місяць 月</div><div class="val">{{ data.month }}</div></div>
+      <div class="pillar"><div class="lbl">День 日</div><div class="val">{{ data.day }}</div></div>
+      <div class="pillar"><div class="lbl">Година 時</div><div class="val">{{ data.time }}</div></div>
+    </div>
+    <div class="dm">Денний майстер: <b>{{ data.day_master }}</b></div>
+  </div>
+  {% endmacro %}
+
+  {% if simple %}
+    {{ pillars_card('Простий варіант (без поправки довготи)', 'Час як на годиннику — крок 1 за ТЗ', simple) }}
+  {% endif %}
+
+  {% if lmt %}
+    {{ pillars_card('З поправкою LMT / довготи', 'Справжній місцевий сонячний час', lmt) }}
+  {% endif %}
+
+  {% if geo or tz %}
+  <div class="card">
+    <h2>Технічні деталі</h2>
+    <div class="note">Звідки взялась кожна цифра — для звірки</div>
+    <table>
+      {% if geo %}
+      <tr><td>Місто (геокодер)</td><td>{{ geo.address }}</td></tr>
+      <tr><td>Координати</td><td>{{ geo.lat }}, {{ geo.lng }}</td></tr>
+      {% endif %}
+      {% if tz %}
+      <tr><td>Часовий пояс</td><td>{{ tz.name }}</td></tr>
+      <tr><td>Зсув UTC на цю дату</td><td>{{ tz.utc_offset }} год</td></tr>
+      <tr><td>Літній час (DST)</td><td>{{ tz.dst }} год</td></tr>
+      <tr><td>Стандартний зсув (без DST)</td><td>{{ tz.std_offset }} год</td></tr>
+      <tr><td>Поправка довготи (LMT)</td><td>{{ tz.corr_min }} хв</td></tr>
+      {% endif %}
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="footnote">
+    Розрахунок: бібліотека lunar_python (Solar → getLunar → getEightChar).<br>
+    Якщо «простий варіант» збігається з bazi-calculator.com на 20 картах — поправку довготи можна не вмикати.<br>
+    Якщо ні — звіряйте з варіантом «LMT / довгота».
+  </div>
+</div>
+</body>
+</html>
